@@ -3,9 +3,10 @@
 !
   module raylib_mod
     use iso_c_binding
-    use iso_fortran_env, only : int8
+    use iso_fortran_env, only : int8, int64, int32
     implicit none
 
+    ! color type is 32 bit integer (rrggbbaa)
     type, bind(c) :: color_t
       integer(int8) :: r, g, b, a
     end type
@@ -14,11 +15,19 @@
     end interface
     private color_from_array
 
-    ! TODO: how define the colors?
-    ! unfortunately, this is not allowed
-    !type(color_t), parameter :: &
-    !  LIGHTGRAY = color_from_array([200, 200, 200, 255])
+    ! "unsigned int" type
+    type, bind(c) :: uint32_t
+      integer(c_int32_t) :: uint
+    end type
+    interface uint32_t
+      module procedure uint32_from_int64
+    end interface
+    private uint32_from_int64
 
+    ! TODO: how define the colors and flags?
+    ! unfortunately, this is not allowed
+    !type(color_t) :: &
+    !  LIGHTGRAY = color_from_array([200, 200, 200, 255])
 
 
     ! Raylib interfaces binding
@@ -45,6 +54,16 @@
 
       subroutine raylib_close_window() bind(c,name="CloseWindow")
       end subroutine
+
+      integer(c_int) function raylib_get_render_width() bind(c,name="GetRenderWidth")
+        import c_int
+        implicit none
+      end function
+
+      integer(c_int) function raylib_get_render_height() bind(c,name="GetRenderHeight")
+        import c_int
+        implicit none
+      end function
 
     ! Custom frame control functions
 
@@ -78,7 +97,17 @@
         integer(c_int), intent(in), value :: fps
       end subroutine
 
+      real(c_float) function raylib_get_frame_time() bind(c,name="GetFrameTime")
+        import c_float
+        implicit none
+      end function
+
     ! Misc. functions
+
+      subroutine raylib_set_config_flags(flags) bind(c,name="SetConfigFlags")
+        import uint32_t
+        type(uint32_t), intent(in), value :: flags
+      end subroutine
 
     ! Set cutom callbacks
 
@@ -92,6 +121,22 @@
 
     ! Input-related functions: mouse
 
+    logical(c_bool) function raylib_is_mouse_button_pressed(button) bind(c,name="IsMouseButtonPressed")
+      import c_bool, c_int
+      implicit none
+      integer(c_int), intent(in), value :: button
+    end function
+
+    integer(c_int) function raylib_get_mouse_x() bind(c,name="GetMouseX")
+      import c_int
+      implicit none
+    end function
+
+    integer(c_int) function raylib_get_mouse_y() bind(c,name="GetMouseY")
+      import c_int
+      implicit none
+    end function
+
     ! Input-related functions: touch
 
     ! Gestures and touch handling functions
@@ -103,6 +148,13 @@
     ! ===============
 
     ! Basic shapes drawing functions
+
+    subroutine raylib_draw_rectangle(posx, posy, width, height, color) bind(c,name="DrawRectangle")
+      import c_int, color_t
+      implicit none
+      integer(c_int), intent(in), value :: posx, posy, width, height
+      type(color_t), intent(in), value :: color
+    end subroutine
 
     ! Basic shapes collision detection functions
 
@@ -165,6 +217,30 @@
     end function
 
 
+    pure elemental integer(c_int32_t) function uintconvert32(s) result(u)
+      integer(int64), intent(in) :: s
+!
+! Convert unsigned integer (0 ... 4 294 967 295) to a 32-bit integer
+!
+      integer :: bs, pos
+      integer(int64) :: s0
+
+      bs = bit_size(u)
+      if (s >= 2_int64**bs) error stop 'uintconvert32 - input overflowing'
+      if (s < 0_int64) error stop 'uintconvert32 - input is negative'
+      s0 = s
+
+      do pos = bs-1, 0, -1
+        if (s0 < 2_int64**pos) then
+          u = ibclr(u, pos)
+        else
+          u = ibset(u, pos)
+          s0 = s0 - 2_int64**pos
+        end if
+      end do
+    end function
+
+
     pure type(color_t) function color_from_array(arr) result(new)
       integer, intent(in) :: arr(4)
 !
@@ -174,6 +250,12 @@
       new%g = uintconvert(arr(2))
       new%b = uintconvert(arr(3))
       new%a = uintconvert(arr(4))
+    end function
+
+
+    pure type(uint32_t) function uint32_from_int64(u) result(new)
+      integer(int64), intent(in) :: u
+      new%uint = uintconvert32(u)
     end function
 
   end module raylib_mod

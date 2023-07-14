@@ -49,4 +49,4 @@ a.pdf
 #!/libminpack.a
 
 # Ignore selected directories
-/archive
+/archiv
