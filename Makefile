@@ -45,6 +45,6 @@ $(main1) : $(modobjects)
 
 # one phoney target
 
-clean : 
+clean :
 	rm $(dir)/*.o *.mod
 # end of makefile

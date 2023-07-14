@@ -145,7 +145,7 @@
   contains
 
     pure elemental integer(int8) function uintconvert(s) result(u)
-      integer, intent(in) :: s 
+      integer, intent(in) :: s
 !
 ! Convert unsigned integer (0-255) to 8-bit integer
 !
